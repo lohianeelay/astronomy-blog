@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic Ink — An Astronomy Blog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0a0a12;
+    --ink-soft: #1a1a2e;
+    --ink-mid: #16213e;
+    --star: #f0e6d3;
+    --star-dim: #8a8a9a;
+    --gold: #c9a84c;
+    --gold-dim: #7a6030;
+    --blue: #4a90d9;
+    --blue-dim: #1a3a6a;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --mono: 'Space Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ink);
+    color: var(--star);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── Star field canvas ── */
+  #starfield {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── Layout wrapper ── */
+  .page { position: relative; z-index: 1; }
+
+  /* ── Header ── */
+  header {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    position: relative;
+  }
+
+  .site-tag {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 1s 0.3s forwards;
+  }
+
+  h1.site-title {
+    font-family: var(--serif);
+    font-size: clamp(3.5rem, 10vw, 8rem);
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    color: var(--star);
+    opacity: 0;
+    animation: fadeUp 1s 0.6s forwards;
+  }
+
+  h1.site-title em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .site-subtitle {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--star-dim);
+    max-width: 38ch;
+    opacity: 0;
+    animation: fadeUp 1s 0.9s forwards;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--star-dim);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    animation: fadeUp 1s 1.5s forwards;
+  }
+
+  .scroll-hint::after {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--star-dim), transparent);
+    animation: pulse 2s infinite;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 10, 18, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--star-dim);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--gold); }
+
+  /* ── Main content ── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.4em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 3rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(201, 168, 76, 0.25);
+  }
+
+  /* ── Featured article ── */
+  .featured {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    margin-bottom: 5rem;
+    overflow: hidden;
+  }
+
+  .featured-visual {
+    background: var(--ink-soft);
+    min-height: 420px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .featured-canvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+  }
+
+  .featured-badge {
+    position: absolute;
+    top: 1.25rem;
+    left: 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.25em;
+    color: var(--ink);
+    background: var(--gold);
+    padding: 0.3em 0.75em;
+    text-transform: uppercase;
+  }
+
+  .featured-text {
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-left: 1px solid rgba(201, 168, 76, 0.2);
+  }
+
+  .article-category {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--blue);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .featured-text h2 {
+    font-size: 2.2rem;
+    font-weight: 300;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
+
+  .featured-text h2 em { color: var(--gold); font-style: italic; }
+
+  .article-meta {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--star-dim);
+    margin-bottom: 1.25rem;
+  }
+
+  .article-excerpt {
+    font-size: 1rem;
+    color: var(--star-dim);
+    line-height: 1.8;
+    margin-bottom: 2rem;
+  }
+
+  .read-btn {
+    align-self: flex-start;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    text-decoration: none;
+    border: 1px solid rgba(201, 168, 76, 0.4);
+    padding: 0.75em 1.5em;
+    transition: background 0.2s, color 0.2s;
+    cursor: pointer;
+  }
+
+  .read-btn:hover {
+    background: var(--gold);
+    color: var(--ink);
+  }
+
+  /* ── Post grid ── */
+  .post-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-bottom: 5rem;
+  }
+
+  .post-card {
+    background: var(--ink-soft);
+    padding: 2rem;
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: border-color 0.3s, transform 0.3s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .post-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(201,168,76,0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .post-card:hover { border-color: rgba(201, 168, 76, 0.35); transform: translateY(-3px); }
+  .post-card:hover::before { opacity: 1; }
+
+  .card-icon {
+    font-size: 1.8rem;
+    margin-bottom: 1.25rem;
+    display: block;
+  }
+
+  .post-card .article-category { margin-bottom: 0.5rem; }
+
+  .post-card h3 {
+    font-size: 1.3rem;
+    font-weight: 400;
+    line-height: 1.25;
+    margin-bottom: 0.75rem;
+  }
+
+  .post-card p {
+    font-size: 0.9rem;
+    color: var(--star-dim);
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-date {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    color: var(--star-dim);
+  }
+
+  .card-arrow {
+    color: var(--gold);
+    font-size: 1rem;
+    transition: transform 0.2s;
+  }
+
+  .post-card:hover .card-arrow { transform: translateX(4px); }
+
+  /* ── Quote block ── */
+  .quote-block {
+    border-left: 3px solid var(--gold);
+    margin: 5rem 0;
+    padding: 2rem 3rem;
+    background: rgba(201, 168, 76, 0.04);
+  }
+
+  .quote-block blockquote {
+    font-size: 1.8rem;
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.4;
+    color: var(--star);
+    margin-bottom: 1rem;
+  }
+
+  .quote-attribution {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  /* ── About strip ── */
+  .about-strip {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 4rem;
+    padding: 4rem 0;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 5rem;
+    align-items: center;
+  }
+
+  .about-label {
+    font-size: 3rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--gold);
+    line-height: 1.1;
+  }
+
+  .about-text { font-size: 1rem; color: var(--star-dim); line-height: 1.8; }
+  .about-text strong { color: var(--star); font-weight: 400; }
+
+  /* ── Full article overlay ── */
+  .article-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(10, 10, 18, 0.97);
+    overflow-y: auto;
+    padding: 4rem 2rem;
+  }
+
+  .article-overlay.open { display: block; }
+
+  .overlay-inner {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .overlay-close {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--star-dim);
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--star-dim);
+    padding: 0.5em 1em;
+    cursor: pointer;
+    margin-bottom: 3rem;
+    display: inline-block;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .overlay-close:hover { border-color: var(--gold); color: var(--gold); }
+
+  .overlay-inner .article-category { margin-bottom: 0.75rem; }
+
+  .overlay-inner h2 {
+    font-size: 2.8rem;
+    font-weight: 300;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
+
+  .overlay-inner h2 em { color: var(--gold); font-style: italic; }
+
+  .overlay-inner .article-meta { margin-bottom: 2.5rem; }
+
+  .overlay-divider {
+    border: none;
+    border-top: 1px solid rgba(201, 168, 76, 0.25);
+    margin: 2rem 0;
+  }
+
+  .article-body { font-size: 1.05rem; color: var(--star-dim); line-height: 1.9; }
+  .article-body p { margin-bottom: 1.5rem; }
+  .article-body h3 { font-size: 1.4rem; font-weight: 400; color: var(--star); margin: 2.5rem 0 1rem; }
+  .article-body strong { color: var(--star); font-weight: 400; }
+  .article-body em { color: var(--gold); font-style: italic; }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 3rem 2rem;
+    text-align: center;
+  }
+
+  .footer-logo {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: var(--gold);
+    font-style: italic;
+    margin-bottom: 0.75rem;
+  }
+
+  .footer-note {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--star-dim);
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; } 50% { opacity: 1; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .featured { grid-template-columns: 1fr; }
+    .featured-visual { min-height: 240px; }
+    .featured-text { border-left: none; border-top: 1px solid rgba(201,168,76,0.2); padding: 2rem; }
+    .post-grid { grid-template-columns: 1fr; }
+    .about-strip { grid-template-columns: 1fr; gap: 1.5rem; }
+    .nav-links { display: none; }
+    .quote-block blockquote { font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div class="page">
+
+  <!-- Hero -->
+  <header>
+    <p class="site-tag">Vol. I &nbsp;·&nbsp; Est. 2026 &nbsp;·&nbsp; Kolkata</p>
+    <h1 class="site-title">Cosmic<br><em>Ink</em></h1>
+    <p class="site-subtitle">Dispatches from the edge of the observable universe — for the curious mind.</p>
+    <div class="scroll-hint">SCROLL</div>
+  </header>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-logo">COSMIC INK</a>
+    <ul class="nav-links">
+      <li><a href="#articles">Articles</a></li>
+      <li><a href="#about">About</a></li>
+    </ul>
+  </nav>
+
+  <!-- Main -->
+  <main id="articles">
+
+    <!-- Featured -->
+    <div class="section-label">Featured Article</div>
+
+    <div class="featured">
+      <div class="featured-visual">
+        <canvas class="featured-canvas" id="nebulaCanvas"></canvas>
+        <div class="featured-badge">Featured</div>
+      </div>
+      <div class="featured-text">
+        <p class="article-category">Stellar Physics</p>
+        <h2>We Are, Quite Literally, Made of <em>Stardust</em></h2>
+        <p class="article-meta">JUNE 12, 2026 &nbsp;·&nbsp; 6 MIN READ</p>
+        <p class="article-excerpt">Every carbon atom in your body was forged in the nuclear furnace of a dying star. The iron in your blood was born from a supernova explosion billions of years ago. This is not poetry — it is chemistry.</p>
+        <a class="read-btn" onclick="openArticle('featured')">Read Article →</a>
+      </div>
+    </div>
+
+    <!-- Post grid -->
+    <div class="section-label">More From the Cosmos</div>
+
+    <div class="post-grid">
+      <div class="post-card" onclick="openArticle('blackhole')">
+        <span class="card-icon">⬤</span>
+        <p class="article-category">Relativity</p>
+        <h3>What Happens at the Edge of a Black Hole?</h3>
+        <p>Time slows. Light bends. And physics, as we know it, starts to quietly break down at the event horizon.</p>
+        <div class="card-footer">
+          <span class="card-date">MAY 28, 2026</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="post-card" onclick="openArticle('exoplanets')">
+        <span class="card-icon">◉</span>
+        <p class="article-category">Exoplanets</p>
+        <h3>5,000 Worlds Beyond Our Solar System</h3>
+        <p>NASA confirmed its 5,000th exoplanet in 2022. What do these distant worlds look like — and could any harbour life?</p>
+        <div class="card-footer">
+          <span class="card-date">MAY 10, 2026</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="post-card" onclick="openArticle('darkmatter')">
+        <span class="card-icon">◌</span>
+        <p class="article-category">Cosmology</p>
+        <h3>Dark Matter: The Invisible Glue of the Universe</h3>
+        <p>It makes up 27% of the universe, bends light, and holds galaxies together — and we have absolutely no idea what it is.</p>
+        <div class="card-footer">
+          <span class="card-date">APR 20, 2026</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quote -->
+    <div class="quote-block">
+      <blockquote>"The cosmos is within us. We are made of star-stuff. We are a way for the universe to know itself."</blockquote>
+      <p class="quote-attribution">— Carl Sagan, Cosmos</p>
+    </div>
+
+    <!-- About -->
+    <div class="about-strip" id="about">
+      <div class="about-label">About<br>this<br>blog.</div>
+      <div class="about-text">
+        <p><strong>Cosmic Ink</strong> is a student astronomy blog created as part of the <em>MDS 2 — AI for Natural Sciences</em> course at St. Xavier's College, Kolkata. It explores the universe through the lens of a second-year BSc Chemistry student who finds that the boundary between chemistry and astrophysics is thinner than you might think.</p>
+        <p>Every element heavier than hydrogen was made in stars. Every planet formed from the same cloud of dust and gas. This blog exists to tell those stories — accessibly, accurately, and with genuine curiosity.</p>
+        <br>
+        <p style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.15em;color:var(--star-dim);line-height:2;">
+          <strong style="color:var(--star);">Student</strong> &nbsp;Neelay Lohia<br>
+          <strong style="color:var(--star);">Roll No.</strong> &nbsp;0371<br>
+          <strong style="color:var(--star);">Department</strong> &nbsp;CEMA<br>
+          <strong style="color:var(--star);">Subject</strong> &nbsp;MDS 2 — AI for Natural Sciences<br>
+          <strong style="color:var(--star);">Semester</strong> &nbsp;II &nbsp;(2025–2026)
+        </p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <div class="footer-logo">Cosmic Ink</div>
+    <p class="footer-note">NEELAY LOHIA &nbsp;·&nbsp; ROLL 0371 &nbsp;·&nbsp; CEMA &nbsp;·&nbsp; ST. XAVIER'S COLLEGE, KOLKATA &nbsp;·&nbsp; 2026</p>
+  </footer>
+
+</div>
+
+<!-- Article overlay -->
+<div class="article-overlay" id="articleOverlay">
+  <div class="overlay-inner">
+    <button class="overlay-close" onclick="closeArticle()">← Back to Blog</button>
+    <div id="articleContent"></div>
+  </div>
+</div>
+
+<script>
+/* ── Star field ── */
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [];
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function initStars() {
+  stars = Array.from({ length: 280 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.4 + 0.2,
+    a: Math.random(),
+    speed: Math.random() * 0.004 + 0.001,
+    phase: Math.random() * Math.PI * 2
+  }));
+}
+
+function drawStars(t) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    const alpha = s.a * (0.5 + 0.5 * Math.sin(t * s.speed + s.phase));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(240,230,211,${alpha})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawStars);
+}
+
+resize();
+initStars();
+requestAnimationFrame(drawStars);
+window.addEventListener('resize', () => { resize(); initStars(); });
+
+/* ── Nebula canvas (featured) ── */
+const nc = document.getElementById('nebulaCanvas');
+const nctx = nc.getContext('2d');
+
+function drawNebula() {
+  nc.width = nc.parentElement.offsetWidth;
+  nc.height = nc.parentElement.offsetHeight;
+  const w = nc.width, h = nc.height;
+  nctx.clearRect(0, 0, w, h);
+
+  const blobs = [
+    { x: w*0.35, y: h*0.4, r: w*0.45, c1: 'rgba(74,144,217,0.18)', c2: 'rgba(74,144,217,0)' },
+    { x: w*0.65, y: h*0.6, r: w*0.38, c1: 'rgba(201,168,76,0.14)', c2: 'rgba(201,168,76,0)' },
+    { x: w*0.5,  y: h*0.5, r: w*0.28, c1: 'rgba(180,120,200,0.10)', c2: 'rgba(180,120,200,0)' },
+  ];
+
+  blobs.forEach(b => {
+    const g = nctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    g.addColorStop(0, b.c1); g.addColorStop(1, b.c2);
+    nctx.fillStyle = g;
+    nctx.beginPath();
+    nctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    nctx.fill();
+  });
+
+  for (let i = 0; i < 120; i++) {
+    const x = Math.random()*w, y = Math.random()*h, r = Math.random()*1.2+0.2;
+    nctx.beginPath();
+    nctx.arc(x, y, r, 0, Math.PI*2);
+    nctx.fillStyle = `rgba(240,230,211,${Math.random()*0.8+0.1})`;
+    nctx.fill();
+  }
+}
+
+drawNebula();
+window.addEventListener('resize', drawNebula);
+
+/* ── Articles data ── */
+const articles = {
+  featured: {
+    category: 'Stellar Physics',
+    title: 'We Are, Quite Literally, Made of <em>Stardust</em>',
+    meta: 'JUNE 12, 2026 · 6 MIN READ',
+    body: `
+      <p>Here is a fact so extraordinary that it deserves to be said plainly: every atom in your body heavier than hydrogen was manufactured inside a star. The calcium in your bones. The oxygen you are breathing right now. The iron that makes your blood red. All of it — born in stellar furnaces, scattered across the galaxy in cataclysmic explosions, and eventually assembled into you.</p>
+      <p>This is not a metaphor. This is nuclear astrophysics.</p>
+      <h3>How stars make elements</h3>
+      <p>A star is, at its core, a giant nuclear fusion reactor held together by gravity. In its centre, hydrogen nuclei are fused into helium, releasing enormous energy in the process. This is what makes the sun shine. But as a star ages, it begins fusing heavier and heavier elements — helium into carbon, carbon into oxygen, oxygen into neon, and so on, building up the periodic table one element at a time.</p>
+      <p>For stars like our sun, this process stops at carbon and oxygen. The star lacks the mass to compress its core enough to fuse heavier elements. Eventually it puffs into a red giant and sheds its outer layers — gently returning those newly made elements back into space.</p>
+      <h3>The supernova: nature's element factory</h3>
+      <p>Massive stars — those eight or more times the mass of our sun — go further. They burn through the periodic table all the way up to iron. But iron is a dead end. Fusing iron <em>consumes</em> energy rather than releasing it, so the stellar core collapses in milliseconds. What follows is one of the most violent events in the universe: a supernova explosion.</p>
+      <p>In those few blazing seconds, temperatures and pressures so extreme are reached that elements heavier than iron — gold, silver, uranium — are forged through rapid neutron capture. The explosion blasts all of this outward into the galaxy at a significant fraction of the speed of light.</p>
+      <h3>The chemistry connection</h3>
+      <p>As a chemistry student, you might find this particularly striking: the periodic table is not just a classroom chart. It is a map of stellar history. Elements up to iron were made in stellar cores over millions of years. Elements beyond iron were made in the last few seconds of a massive star's life. And all of them were eventually gathered by gravity into new solar systems — including ours.</p>
+      <p>Carl Sagan put it beautifully: <em>we are a way for the cosmos to know itself.</em> The iron in your blood was once inside a star. The carbon in your DNA was assembled in a stellar core. You are not separate from the universe — you are the universe, temporarily arranged into something that can wonder about its own origins.</p>
+    `
+  },
+  blackhole: {
+    category: 'Relativity',
+    title: 'What Happens at the Edge of a <em>Black Hole?</em>',
+    meta: 'MAY 28, 2026 · 5 MIN READ',
+    body: `
+      <p>A black hole is a region of spacetime where gravity is so strong that nothing — not matter, not light, not information — can escape once it crosses a critical boundary called the <em>event horizon</em>. But what actually happens as you approach that boundary?</p>
+      <p>The answer depends entirely on who is doing the observing.</p>
+      <h3>From a safe distance</h3>
+      <p>Imagine watching a friend fall into a black hole from far away. According to Einstein's general relativity, time passes more slowly in stronger gravitational fields. As your friend approaches the event horizon, you would see them slow down. Their image would redden as light loses energy climbing out of the intense gravity well. Eventually, they would appear to freeze at the horizon — their image growing dimmer and dimmer until they fade from view entirely. From your perspective, they never quite cross the line.</p>
+      <h3>From the falling perspective</h3>
+      <p>Now imagine you <em>are</em> the one falling in. From your own perspective, nothing dramatic happens at the event horizon of a large black hole. You cross it without noticing — there is no wall, no alarm. General relativity tells us that locally, spacetime near a large black hole's horizon is relatively smooth. The tidal forces — the difference in gravity between your head and feet — are actually quite mild for a sufficiently massive black hole.</p>
+      <p>But once you are inside, your fate is sealed. Every possible path through spacetime leads toward the singularity at the centre. You cannot turn back any more than you can travel backwards in time. The singularity — where our equations break down completely — awaits.</p>
+      <h3>The information paradox</h3>
+      <p>Here is where things get philosophically troubling. Stephen Hawking showed in 1974 that black holes slowly evaporate by emitting radiation — <em>Hawking radiation</em> — due to quantum effects near the event horizon. Eventually, the black hole disappears entirely. But what happened to all the information about everything that fell in? Quantum mechanics says information cannot be destroyed. General relativity says it can. Resolving this paradox remains one of the great open problems in theoretical physics.</p>
+      <p>Black holes are not just exotic curiosities. They are windows into the places where our best theories of nature come into conflict — and that makes them some of the most important objects in the universe to understand.</p>
+    `
+  },
+  exoplanets: {
+    category: 'Exoplanets',
+    title: '5,000 Worlds Beyond Our <em>Solar System</em>',
+    meta: 'MAY 10, 2026 · 5 MIN READ',
+    body: `
+      <p>In March 2022, NASA confirmed the 5,000th exoplanet — a world orbiting another star. Twenty-five years earlier, we had confirmed exactly zero. The pace of discovery has been breathtaking, and it has fundamentally changed how we think about our place in the universe.</p>
+      <h3>How we find them</h3>
+      <p>Most exoplanets are found using the <em>transit method</em>. When a planet passes in front of its host star from our line of sight, it causes a tiny, regular dip in the star's brightness. NASA's Kepler Space Telescope and its successor TESS have detected thousands of planets this way — monitoring hundreds of thousands of stars simultaneously and watching for these characteristic dimming events.</p>
+      <p>Another key technique is <em>radial velocity</em>. A planet doesn't just orbit a star; both the planet and star orbit their common centre of mass. This causes the star to wobble slightly, which Doppler-shifts its light. By measuring these tiny shifts with extreme precision, we can infer the presence, mass, and orbital period of an unseen planet.</p>
+      <h3>The staggering variety</h3>
+      <p>What has surprised astronomers most is how bizarre the exoplanet population is. We have found hot Jupiters — gas giants orbiting so close to their stars that a year lasts just a few days. We have found super-Earths, a class of planet with no analogue in our solar system. We have found planets in binary star systems, orbiting not one but two suns. We have found a planet so dark it reflects almost no light, black as coal.</p>
+      <p>Our solar system, it turns out, may be the unusual one.</p>
+      <h3>The question of life</h3>
+      <p>Astronomers estimate that the Milky Way alone contains roughly 300 billion stars, and that most of them host at least one planet. A significant fraction of sun-like stars appear to have an Earth-sized planet in the habitable zone — the region where liquid water could exist on the surface. That is tens of billions of potentially habitable worlds in our galaxy alone.</p>
+      <p>We have not found life elsewhere yet. But for the first time in history, we know where to look. The James Webb Space Telescope is already probing the atmospheres of nearby exoplanets, searching for chemical signatures — oxygen, methane, water vapour — that might hint at biology.</p>
+      <p>The universe, it seems, is full of worlds. The question of whether any of them are full of life remains the most profound open question in science.</p>
+    `
+  },
+  darkmatter: {
+    category: 'Cosmology',
+    title: 'Dark Matter: The Invisible Glue of the <em>Universe</em>',
+    meta: 'APR 20, 2026 · 5 MIN READ',
+    body: `
+      <p>Look up at the night sky and you are seeing, at most, a tiny fraction of what the universe actually contains. All the stars, galaxies, gas clouds, and dust that we can detect with any instrument make up only about 5% of the total energy content of the universe. The remaining 95% is invisible — dark matter and dark energy — and we barely understand either one.</p>
+      <h3>The evidence is overwhelming</h3>
+      <p>Dark matter was first seriously proposed by Swiss astronomer Fritz Zwicky in 1933. He noticed that galaxies in the Coma Cluster were moving too fast — far faster than the visible mass of the cluster could account for through gravity. Something unseen was providing additional gravitational pull.</p>
+      <p>In the 1970s, astronomer Vera Rubin provided the most compelling evidence yet. She studied the rotation curves of spiral galaxies — how fast stars orbit at different distances from the galactic centre. According to Newtonian gravity, stars at the outer edges should orbit more slowly, just as the outer planets of our solar system do. But they don't. Stars at the outskirts of galaxies orbit at nearly the same speed as those near the centre, as if they were embedded in a vast, invisible halo of mass extending far beyond the visible galaxy.</p>
+      <h3>What we know — and don't know</h3>
+      <p>Dark matter interacts gravitationally. We know this because we can map it indirectly through <em>gravitational lensing</em> — the bending of light from distant galaxies around massive dark matter clumps. This has given us detailed maps of the dark matter distribution in the universe.</p>
+      <p>What dark matter is, however, remains completely unknown. The leading candidates include <em>WIMPs</em> (Weakly Interacting Massive Particles) — hypothetical particles that interact only through gravity and the weak nuclear force. Despite extraordinarily sensitive underground detectors built to find them, none have been detected. Other candidates include axions, sterile neutrinos, and primordial black holes.</p>
+      <h3>Why it matters for chemistry</h3>
+      <p>Dark matter shaped the large-scale structure of the universe. Without it, matter would not have clumped together into galaxies in the first place. There would be no stars, no stellar nucleosynthesis, no periodic table, no planets, no chemistry as we know it. The invisible 27% of the universe that we cannot see or touch is, in a very real sense, the reason we exist to wonder about it.</p>
+    `
+  }
+};
+
+function openArticle(id) {
+  const a = articles[id];
+  document.getElementById('articleContent').innerHTML = `
+    <p class="article-category">${a.category}</p>
+    <h2>${a.title}</h2>
+    <p class="article-meta">${a.meta}</p>
+    <hr class="overlay-divider">
+    <div class="article-body">${a.body}</div>
+  `;
+  const overlay = document.getElementById('articleOverlay');
+  overlay.classList.add('open');
+  overlay.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeArticle() {
+  document.getElementById('articleOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeArticle(); });
+</script>
+</body>
+</html>
